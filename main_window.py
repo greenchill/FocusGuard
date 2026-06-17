@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("FocusGuard")
+        self.setWindowTitle("FocusCat++")
         self.resize(940, 624)
         self.setMinimumSize(820, 560)
 
@@ -768,12 +768,13 @@ class MainWindow(QMainWindow):
         self.game.sync_detection_to_session()
 
     def _style_dialog(self, box) -> None:
-        """Force readable pastel-theme colors on a QMessageBox (the default dark/grey
-        rendering on some Windows themes is low-contrast)."""
+        """Force readable pastel-theme colors on a modal dialog (QMessageBox / QInputDialog).
+        The default dark/grey rendering on some Windows themes is low-contrast."""
         box.setStyleSheet(
-            f"QMessageBox {{ background-color: {COLORS['surface']}; }}"
-            f"QMessageBox QLabel {{ color: {COLORS['text']}; font-size: 13px;"
-            f" background: transparent; }}"
+            f"QWidget {{ background-color: {COLORS['surface']}; color: {COLORS['text']}; }}"
+            f"QLabel {{ color: {COLORS['text']}; font-size: 13px; background: transparent; }}"
+            f"QLineEdit {{ background-color: {COLORS['elevated']}; color: {COLORS['text']};"
+            f" border: 1px solid {COLORS['border']}; border-radius: 6px; padding: 6px; }}"
             f"QPushButton {{ background-color: {COLORS['elevated']}; color: {COLORS['text']};"
             f" border: 1px solid {COLORS['border']}; border-radius: 8px;"
             f" padding: 6px 16px; min-width: 84px; }}"
@@ -782,13 +783,48 @@ class MainWindow(QMainWindow):
             f" color: {COLORS['ink']}; border: none; }}"
         )
 
+    def first_run_setup(self) -> None:
+        """One-time onboarding shown (before the camera) on the very first launch: let the
+        user name their pet. Gated by cfg['pet_named'] so it never repeats."""
+        if bool(self.camera.cfg.get("pet_named", False)):
+            return
+        self._ask_pet_name()
+        self.camera.cfg["pet_named"] = True
+        vision_config.save_config(self.camera.cfg)
+
+    def _ask_pet_name(self) -> None:
+        """Prompt for the pet's name and persist it to cfg['pet']['name']."""
+        from PyQt6.QtWidgets import QInputDialog, QLineEdit
+        pet_cfg = self.camera.cfg.setdefault("pet", {})
+        current = pet_cfg.get("name", "Buddy")
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("Name your cat")
+        dlg.setLabelText("What would you like to name your focus cat?")
+        dlg.setTextValue(current)
+        dlg.setTextEchoMode(QLineEdit.EchoMode.Normal)
+        dlg.setOkButtonText("Save")
+        dlg.setCancelButtonText("Skip")
+        self._style_dialog(dlg)
+        accepted = dlg.exec()
+        name = (dlg.textValue() or "").strip()
+        if accepted and name:
+            pet_cfg["name"] = name[:24]
+            try:
+                self.game.pet.name = pet_cfg["name"]
+            except Exception:
+                pass
+            try:
+                self.dashboard.pet.say(f"Hi, I'm {pet_cfg['name']}!", 3000)
+            except Exception:
+                pass
+
     def _show_welcome(self) -> None:
         """First-run welcome: a brief, skippable explainer (single OK button).
 
         Testable + gated behind cfg['welcome_shown'] so tests never see a modal."""
         from PyQt6.QtWidgets import QMessageBox
         box = QMessageBox(self)
-        box.setWindowTitle("Welcome to FocusGuard")
+        box.setWindowTitle("Welcome to FocusCat++")
         box.setIcon(QMessageBox.Icon.Information)
         box.setText("Here's how it works:")
         box.setInformativeText(
@@ -808,7 +844,7 @@ class MainWindow(QMainWindow):
         box = QMessageBox(self)
         box.setWindowTitle("Camera & privacy")
         box.setIcon(QMessageBox.Icon.Information)
-        box.setText("FocusGuard uses your webcam to help you focus.")
+        box.setText("FocusCat++ uses your webcam to help you focus.")
         box.setInformativeText(
             "Everything runs 100% locally on your computer:\n"
             "• video is analyzed in real time and never saved;\n"

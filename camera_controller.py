@@ -420,6 +420,9 @@ class CameraController(QObject):
     # ------------------------------------------------------------------ #
     def on_metrics(self, m: dict) -> None:
         """Per-frame metrics -> dashboard chips + (debounced) pet reactions."""
+        # Ignore metrics still queued from before a pause (the worker is shutting down).
+        if self._suspended:
+            return
         # Freshness mark: metrics arrived right now (to guard is_focused() against
         # sticking when the camera hangs).
         import time as _time
@@ -525,7 +528,9 @@ class CameraController(QObject):
 
         BGR->RGB, QImage(Format_RGB888). We keep the frame memory on self
         (self._frame_buf), since QImage does NOT copy a foreign buffer."""
-        if bgr is None:
+        # Once suspended (paused), drop any still-queued frames so the user's last image
+        # never flashes back over the camera-off avatar.
+        if self._suspended or bgr is None:
             return
         try:
             h, w = bgr.shape[:2]

@@ -19,12 +19,12 @@ Signals/slots for the future backend:
     set_detection(name, bad)        — update a detection chip ('phone'/'gaze'/'posture').
 """
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QSize, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QProgressBar, QFrame,
     QGraphicsDropShadowEffect, QSizePolicy, QPushButton,
 )
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtGui import QColor, QPixmap, QPainter, QPainterPath
 
 from theme import COLORS, SPACING
 from widget_timer import TimerWidget
@@ -219,7 +219,11 @@ class CameraPreview(QLabel):
         self._src = None
         self._off_pix = None       # camera-off placeholder avatar
         self._mode = "off"         # 'frame' = live feed, 'off' = avatar/placeholder
-        sp = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        # FIXED vertical policy + width-driven height: the box height depends ONLY on its
+        # width (16:9, clamped), NEVER on the pixmap content. Without this, switching from
+        # the small off-avatar to a full frame (when the camera starts/calibrates) grew the
+        # QLabel and the box visibly "stretched". Height now stays static across off<->frame.
+        sp = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sp.setHeightForWidth(True)
         self.setSizePolicy(sp)
         self.setMinimumHeight(self._MIN_H)
@@ -231,6 +235,15 @@ class CameraPreview(QLabel):
 
     def heightForWidth(self, w: int) -> int:
         return max(self._MIN_H, min(self._MAX_H, int(round(w * self._ASPECT))))
+
+    def sizeHint(self) -> QSize:
+        # Pixmap-INDEPENDENT: derived purely from the current width, so setting a frame
+        # never changes the widget's preferred size (no relayout / stretch).
+        w = self.width() if self.width() > 1 else 320
+        return QSize(w, self.heightForWidth(w))
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(120, self._MIN_H)
 
     def set_off_image(self, pix: QPixmap) -> None:
         """Set the placeholder shown when the camera is off (a 'no camera' avatar)."""
@@ -381,10 +394,12 @@ class DashboardWidget(QWidget):
         # slack is invisible. Until the first frame arrives we show placeholder text.
         self._cam_preview = CameraPreview()
         self._cam_preview.setObjectName("CameraPreview")
+        # Background matches the card (surface) and the border is a hairline in a tone that
+        # blends into it, so the camera-off gray avatar sits harmoniously with no harsh box.
         self._cam_preview.setStyleSheet(
             f"#CameraPreview {{ background-color: {COLORS['surface']};"
-            f" color: {COLORS['muted']}; border: 1px solid {COLORS['border']};"
-            f" border-radius: 8px; }}"
+            f" color: {COLORS['muted']}; border: 1px solid {COLORS['track']};"
+            f" border-radius: 10px; }}"
         )
         # Camera-off placeholder: a soft 'no camera' avatar shown whenever the camera
         # is off/paused/offline (instead of a live feed).
@@ -393,7 +408,22 @@ class DashboardWidget(QWidget):
             from vision.paths import ASSETS_DIR
             _off = QPixmap(os.path.join(ASSETS_DIR, "profilecameraoff.png"))
             if not _off.isNull():
-                self._cam_preview.set_off_image(_off)
+                # The source has a CHECKERBOARD baked into its corners (the avif was RGB,
+                # so the "transparent" look is really a checker pattern). Clip the avatar to
+                # its inscribed circle on the card surface -> a clean gray circle that blends
+                # harmoniously with the background (no checker, no harsh box).
+                _side = min(_off.width(), _off.height())
+                _flat = QPixmap(_side, _side)
+                _flat.fill(QColor(COLORS["surface"]))
+                _p = QPainter(_flat)
+                _p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                _p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+                _path = QPainterPath()
+                _path.addEllipse(0.0, 0.0, float(_side), float(_side))
+                _p.setClipPath(_path)
+                _p.drawPixmap(0, 0, _off)
+                _p.end()
+                self._cam_preview.set_off_image(_flat)
         except Exception:
             pass
         self._cam_preview.show_off()

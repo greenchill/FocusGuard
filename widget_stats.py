@@ -13,6 +13,8 @@ Backend integration:
     set_daily_goal(done, target)    — fill in the daily goal progress.
 """
 
+import datetime
+
 from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QLinearGradient, QFont, QPen
 from PyQt6.QtWidgets import (
@@ -23,8 +25,17 @@ from PyQt6.QtWidgets import (
 from theme import COLORS, SPACING, FONTS
 
 
-# Weekday labels for the X axis.
-WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+# Weekday abbreviations indexed by date.weekday() (0 = Monday).
+_WD_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _last_7_weekday_labels():
+    """Weekday labels for the last 7 days ENDING TODAY (so the rightmost bar = today).
+
+    The chart data is last_n_days(7) ending today, so a fixed Mon..Sun axis mislabels it
+    (e.g. today's bar shown as 'Sun'). Compute the real labels instead."""
+    today = datetime.date.today()
+    return [_WD_NAMES[(today - datetime.timedelta(days=(6 - i))).weekday()] for i in range(7)]
 
 
 class BarChart(QWidget):
@@ -71,6 +82,7 @@ class BarChart(QWidget):
         slot = chart_w / n
         bar_w = slot * 0.55
         label_font = QFont(FONTS["body"], 9)
+        weekdays = _last_7_weekday_labels()   # real labels (rightmost = today)
 
         for i, value in enumerate(self._data):
             bar_h = (value / max_val) * chart_h
@@ -89,7 +101,7 @@ class BarChart(QWidget):
             # Weekday label below the bar.
             painter.setPen(QColor(COLORS["muted"]))
             painter.setFont(label_font)
-            day = WEEKDAYS[i] if i < len(WEEKDAYS) else ""
+            day = weekdays[i] if i < len(weekdays) else ""
             label_rect = QRectF(pad_left + slot * i, h - pad_bottom + 4, slot, 18)
             painter.drawText(label_rect, Qt.AlignmentFlag.AlignCenter, day)
 

@@ -95,6 +95,12 @@ class SettingsWidget(QWidget):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         inner = QWidget()
+        # The scroll VIEWPORT paints the palette Base (dark on some Windows themes), which
+        # showed as a black frame around the cards. Fill the inner content widget with the
+        # page background so it blends with the rest of the app (object-name selector so it
+        # doesn't cascade into the cards).
+        inner.setObjectName("SettingsInner")
+        inner.setStyleSheet(f"#SettingsInner {{ background-color: {COLORS['bg']}; }}")
         content = QVBoxLayout(inner)
         content.setContentsMargins(0, 0, 8, 0)   # small right pad so cards clear the scrollbar
         content.setSpacing(SPACING["md"])

@@ -1,10 +1,10 @@
-# FocusGuard
+# FocusCat++
 
 A desktop focus companion with a pixel-cat pet. Your webcam watches for the usual
 focus-killers — **phone in hand, eyes off the screen, slumped posture** — and the cat
-reacts. Run a Pomodoro session, optionally loop calming **brown noise**, and (if you
-want) hard-block distracting websites while you focus. Everything runs **100% locally**;
-no video is ever recorded, uploaded, or shared.
+reacts. Name your cat, run a Pomodoro session, optionally loop calming **brown noise**,
+and (if you want) hard-block distracting websites while you focus. Everything runs
+**100% locally**; no video is ever recorded, uploaded, or shared.
 
 > Made by **David Kitunov**.
 

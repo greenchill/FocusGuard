@@ -11,9 +11,9 @@
 ; %LOCALAPPDATA%\Programs\FocusGuard. The app itself only needs admin at runtime for
 ; the optional hosts-file site blocking; the installer does not.
 
-#define MyAppName "FocusGuard"
+#define MyAppName "FocusCat++"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "FocusGuard"
+#define MyAppPublisher "David Kitunov"
 #define MyAppExeName "FocusGuard.exe"
 
 [Setup]
@@ -26,7 +26,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=installer_output
-OutputBaseFilename=FocusGuard-Setup
+OutputBaseFilename=FocusCatPP-Setup
 SetupIconFile=app_icon.ico
 WizardStyle=modern
 PrivilegesRequired=lowest

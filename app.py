@@ -62,11 +62,12 @@ def _acquire_single_instance(app):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName("FocusGuard")
+    app.setApplicationName("FocusCat++")
+    app.setApplicationDisplayName("FocusCat++")
 
     _singleton = _acquire_single_instance(app)
     if _singleton is None:
-        QMessageBox.information(None, "FocusGuard", "FocusGuard is already running.")
+        QMessageBox.information(None, "FocusCat++", "FocusCat++ is already running.")
         return 0
     app._fg_singleton = _singleton   # prevent GC while running
 
@@ -81,6 +82,9 @@ def main() -> int:
     # Main window.
     window = MainWindow()
     window.show()
+
+    # First-run onboarding (name the pet), once, before the camera/consent flow.
+    window.first_run_setup()
 
     # Start the camera AFTER show(): the window constructor does not open the camera,
     # so the window has time to render, and DetectionWorker only touches the device

@@ -439,6 +439,10 @@ class GameController(QObject):
         self._push_gamification()
         if self._tick_count % _STATS_REFRESH_EVERY == 0:
             self._refresh_stats_widget()
+        # Persist pet + stats every 30 s so a long session's progress survives an abrupt
+        # exit (a clean stop/done/quit also saves; this just bounds the loss to ~30 s).
+        if self._tick_count % 30 == 0:
+            self.save()
 
     def _is_focused_now(self):
         """Whether to accrue a focus second this tick.
