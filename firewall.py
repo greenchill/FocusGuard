@@ -202,7 +202,12 @@ def block(domains=None, do_flush=True):
                  "# Do not edit by hand - managed by FocusGuard."]
         for d in domains:
             lines.append(f"{REDIRECT_IP} {d}")
-            lines.append(f"{REDIRECT_IP} www.{d}")
+            # The hosts file has no wildcards, so cover the common web-facing subdomains
+            # (the apex + www + m). e.g. youtube.com -> youtube.com, www.youtube.com,
+            # m.youtube.com. Skip a prefix the domain already carries.
+            for sub in ("www", "m"):
+                if not d.startswith(sub + "."):
+                    lines.append(f"{REDIRECT_IP} {sub}.{d}")
         lines.append(MARK_END)
         new_text = base.rstrip() + "\n" + "\n".join(lines) + "\n"
         _write_hosts(new_text)

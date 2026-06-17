@@ -596,18 +596,22 @@ class MainWindow(QMainWindow):
 
         if on:
             if not firewall.is_admin():
-                msg = "Site block needs admin — click Restart as administrator"
-                self._log_status(msg)
-                try:
-                    self.dashboard.pet.say(msg, 4000)
-                except Exception:
-                    pass
+                self._say_block_status(
+                    "Site block needs admin — click 'Restart as administrator'.")
             else:
-                # If a focus session is already running, apply the block right now.
-                if getattr(self, "game", None) is not None and \
-                        getattr(self.game, "_running", False) and self.game.session is not None \
-                        and self.game.session.is_focus():
-                    self._safe_block()
+                focusing = (getattr(self, "game", None) is not None and
+                            getattr(self.game, "_running", False) and
+                            self.game.session is not None and self.game.session.is_focus())
+                if focusing:
+                    # Apply now and CONFIRM it actually landed (some security software
+                    # locks the hosts file, so block() can report ok yet not persist).
+                    ok, msg = self._safe_block()
+                    if ok and firewall.is_blocked():
+                        self._say_block_status("Distracting sites are blocked now.")
+                    else:
+                        self._say_block_status(f"Couldn't block sites: {msg}")
+                else:
+                    self._say_block_status("Sites will be blocked while you focus.")
         else:
             # Turning the feature off should never leave the user's sites blocked.
             try:
@@ -648,14 +652,24 @@ class MainWindow(QMainWindow):
             if app is not None:
                 app.quit()
 
-    def _safe_block(self) -> None:
-        """Apply firewall.block() defensively, surfacing any failure as a status line."""
+    def _safe_block(self):
+        """Apply firewall.block() defensively. Returns (ok, msg) and logs any failure."""
         try:
             ok, msg = firewall.block()
             if not ok:
                 self._log_status(f"Site block: {msg}")
+            return ok, msg
         except Exception as exc:
             self._log_status(f"Site block error: {exc}")
+            return False, str(exc)
+
+    def _say_block_status(self, text: str) -> None:
+        """Surface a site-block result where the user actually sees it (the cat + log)."""
+        self._log_status(text)
+        try:
+            self.dashboard.pet.say(text, 4500)
+        except Exception:
+            pass
 
     def _cleanup_stale_block(self) -> None:
         """On startup, drop a leftover block if the feature is now disabled (idempotent)."""
