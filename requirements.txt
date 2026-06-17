@@ -1,0 +1,31 @@
+# FocusGuard — runtime + build dependencies (Python 3.12, Windows).
+# Install:  py -3.12 -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+
+# GUI
+PyQt6==6.11.0
+PyQt6-Qt6==6.11.1
+PyQt6_sip==13.11.1
+
+# Vision / detection (100% local: MediaPipe FaceLandmarker + Pose + EfficientDet phone)
+mediapipe==0.10.35
+opencv-python==4.13.0.92
+numpy==2.4.6
+Pillow==12.2.0
+
+# Audio (chimes + looping brown noise)
+sounddevice==0.5.5
+
+# Global hotkey (show/hide the desktop pet)
+pynput>=1.7
+
+# Windows camera enumeration (DirectShow device names)
+pygrabber==0.2 ; sys_platform == "win32"
+comtypes==1.4.16 ; sys_platform == "win32"
+
+# Build the .exe (PyInstaller, via focusguard.spec)
+pyinstaller==6.21.0
+pyinstaller-hooks-contrib==2026.6
+
+# Optional: a YOLOv8 phone detector (the app falls back to MediaPipe EfficientDet
+# automatically, so this is NOT required). Installing it pulls in torch (~360 MB).
+# ultralytics>=8.1

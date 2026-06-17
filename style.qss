@@ -1,0 +1,312 @@
+/* ========================================================================== */
+/*  style.qss — FocusGuard PASTEL theme (soft beige / lemon / mint).           */
+/*                                                                            */
+/*  IMPORTANT: QSS does NOT support box-shadow, transform, transition, blur.  */
+/*  Shadows are done via QGraphicsDropShadowEffect in the Python code.        */
+/*  Hex values must match theme.py.                                           */
+/*                                                                            */
+/*  Palette:                                                                  */
+/*    bg #F4EEE0 | surface #FCF8EE | elevated #EFE7D4 | sidebar #ECE3D0       */
+/*    accent #3DBE9B | accent_soft #A6E3CF | success #67C08A                  */
+/*    warning #E5B23C | danger #E47C6F | text #433F2E | muted #8E8674         */
+/* ========================================================================== */
+
+/* ------------------------------- Base ------------------------------------ */
+QMainWindow, #Central {
+    background-color: #F4EEE0;
+}
+
+QWidget {
+    color: #433F2E;
+    font-size: 13px;
+}
+
+/* Muted and heading text */
+#Muted {
+    color: #8E8674;
+    font-size: 12px;
+}
+#PageTitle {
+    color: #433F2E;
+    font-size: 22px;
+    font-weight: bold;
+}
+#CardTitle {
+    color: #433F2E;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+/* ------------------------------- Sidebar --------------------------------- */
+#Sidebar {
+    background-color: #ECE3D0;
+    border-right: 1px solid #E0D6C0;
+}
+
+/* IMPORTANT: a partial border PLUS border-radius is a known Qt QSS issue
+   (rounded corners and a one-sided border conflict). So we use a full
+   transparent 1px border + a background highlight, and for the active state a
+   tinted background + a full accent border. */
+#NavButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0px;            /* icon-only buttons — center the glyph */
+    color: #8E8674;
+}
+#NavButton:hover {
+    background-color: #EFE7D4;
+    color: #433F2E;
+}
+#NavButton:checked {
+    background-color: #DFF3EC;
+    border: 1px solid #3DBE9B;
+    color: #3DBE9B;
+}
+
+/* ------------------------------- Cards ----------------------------------- */
+#Card {
+    background-color: #FCF8EE;
+    border: 1px solid #E0D6C0;
+    border-radius: 16px;
+}
+
+/* --------------------------- Buttons (variants) -------------------------- */
+QPushButton {
+    background-color: #EFE7D4;
+    color: #433F2E;
+    border: 1px solid #E0D6C0;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+}
+QPushButton:hover {
+    background-color: #E6DCC6;
+}
+QPushButton:disabled {
+    color: #B5AE9C;
+    background-color: #F1EBDD;
+}
+
+/* Accent (primary) button — mint gradient with dark ink text */
+#PrimaryButton {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #3DBE9B, stop:1 #6FD2B5);
+    color: #2E2B20;
+    border: none;
+    font-weight: bold;
+}
+#PrimaryButton:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #45CBA6, stop:1 #87DCC4);
+}
+#PrimaryButton:disabled {
+    background-color: #E0D6C0;
+    color: #B5AE9C;
+}
+
+/* "Ghost" button (secondary) */
+#GhostButton {
+    background-color: transparent;
+    border: 1px solid #E0D6C0;
+    color: #8E8674;
+}
+#GhostButton:hover {
+    background-color: #EFE7D4;
+    color: #433F2E;
+}
+#GhostButton:disabled {
+    color: #B5AE9C;
+    border-color: #E9E1CF;
+}
+
+/* ------------------------------- SpinBox --------------------------------- */
+QSpinBox {
+    background-color: #FFFCF5;
+    border: 1px solid #E0D6C0;
+    border-radius: 8px;
+    padding: 5px 8px;
+    color: #433F2E;
+    min-width: 84px;
+}
+QSpinBox:hover {
+    border: 1px solid #3DBE9B;
+}
+QSpinBox::up-button, QSpinBox::down-button {
+    background-color: #EFE7D4;
+    border: none;
+    width: 18px;
+}
+QSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 8px;
+}
+QSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 8px;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #3DBE9B;
+}
+QSpinBox::up-arrow {
+    image: none; width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid #6A6450;
+}
+QSpinBox::down-arrow {
+    image: none; width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #6A6450;
+}
+
+/* ------------------------------ ComboBox --------------------------------- */
+QComboBox {
+    background-color: #FFFCF5;
+    border: 1px solid #E0D6C0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: #433F2E;
+}
+QComboBox:hover {
+    border: 1px solid #3DBE9B;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 22px;
+}
+QComboBox QAbstractItemView {
+    background-color: #FCF8EE;
+    border: 1px solid #E0D6C0;
+    selection-background-color: #3DBE9B;
+    selection-color: #2E2B20;
+    color: #433F2E;
+    outline: none;
+}
+
+/* ----------------------------- Progress bars ----------------------------- */
+QProgressBar {
+    background-color: #E7DECA;
+    border: none;
+    border-radius: 8px;
+    height: 16px;
+    text-align: center;
+    color: #433F2E;
+    font-size: 11px;
+}
+QProgressBar::chunk {
+    border-radius: 8px;
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #3DBE9B, stop:1 #A6E3CF);
+}
+/* Daily goal — lemon gradient */
+#GoalBar::chunk {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #E5B23C, stop:1 #F2D98A);
+}
+
+/* ------------------------------- Slider ---------------------------------- */
+QSlider::groove:horizontal {
+    height: 6px;
+    background-color: #E7DECA;
+    border-radius: 3px;
+}
+QSlider::sub-page:horizontal {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #3DBE9B, stop:1 #A6E3CF);
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background-color: #FFFFFF;
+    border: 1px solid #C9BFA8;
+    width: 16px;
+    height: 16px;
+    margin: -6px 0;
+    border-radius: 8px;
+}
+QSlider::handle:horizontal:hover {
+    background-color: #DFF3EC;
+    border-color: #3DBE9B;
+}
+
+/* ------------------------- RadioButton / CheckBox ------------------------ */
+QRadioButton, QCheckBox {
+    color: #433F2E;
+    spacing: 8px;
+}
+QRadioButton::indicator, QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+}
+QRadioButton::indicator {
+    border-radius: 8px;
+    border: 2px solid #C9BFA8;
+    background-color: #FFFCF5;
+}
+QRadioButton::indicator:checked {
+    border: 2px solid #3DBE9B;
+    background-color: #3DBE9B;
+}
+QCheckBox::indicator {
+    border-radius: 5px;
+    border: 2px solid #C9BFA8;
+    background-color: #FFFCF5;
+}
+QCheckBox::indicator:checked {
+    border: 2px solid #3DBE9B;
+    background-color: #3DBE9B;
+}
+
+/* ----------------------------- Text field -------------------------------- */
+#DomainsEdit, QPlainTextEdit {
+    background-color: #FFFCF5;
+    border: 1px solid #E0D6C0;
+    border-radius: 10px;
+    color: #433F2E;
+    padding: 8px;
+    selection-background-color: #3DBE9B;
+    selection-color: #2E2B20;
+}
+QPlainTextEdit:focus {
+    border: 1px solid #3DBE9B;
+}
+
+/* ----------------------------- XP / badges ------------------------------- */
+#XpBar {
+    height: 18px;
+}
+
+/* ------------------------------- Tooltips -------------------------------- */
+QToolTip {
+    background-color: #FCF8EE;
+    color: #433F2E;
+    border: 1px solid #3DBE9B;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+/* ----------------------------- Scrolling --------------------------------- */
+QScrollArea, #SettingsScroll {
+    background-color: transparent;
+    border: none;
+}
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 10px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background-color: #D6CBB2;
+    border-radius: 5px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #3DBE9B;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background-color: transparent;
+}

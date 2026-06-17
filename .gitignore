@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment (recreate with requirements)
+.venv/
+venv/
+env/
+
+# PyInstaller build output
+build/
+dist/
+installer_output/
+*.manifest
+
+# User-writable runtime data (never commit personal state)
+config.json
+data/
+blocklist.txt
+
+# OS / editor cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
