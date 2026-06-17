@@ -46,26 +46,60 @@ def _icon_path() -> str:
     return str(p) if p.exists() else ""
 
 
-def _acquire_single_instance(app):
+def _run_firewall_helper() -> int | None:
+    """Elevated hosts helper: if launched with --fw-block / --fw-unblock, do ONLY the
+    hosts edit and exit (no GUI, no single-instance lock). Used by elevation.run_hosts_helper
+    so the main app can block/unblock without restarting. Returns an exit code, or None
+    when this is a normal launch."""
+    argv = sys.argv
+    if "--fw-block" not in argv and "--fw-unblock" not in argv:
+        return None
+    try:
+        import firewall
+        if "--fw-unblock" in argv:
+            ok, msg = firewall.unblock()
+        else:
+            ok, msg = firewall.block()
+        print(("[OK] " if ok else "[!] ") + msg)
+        return 0 if ok else 2
+    except Exception as exc:
+        print(f"[firewall-helper] {exc}")
+        return 3
+
+
+def _acquire_single_instance(app, retry: bool = False):
     """Return a held QSharedMemory if we're the first instance, else None.
 
     A second copy would fight the first for the webcam (camera "doesn't work") and
-    spawn a duplicate desktop cat, so we only allow one running instance."""
+    spawn a duplicate desktop cat, so we only allow one running instance. When relaunched
+    elevated (retry=True) we wait a few seconds for the OLD copy to release the lock as it
+    quits, so 'Restart as administrator' isn't rejected as 'already running'."""
+    import time as _t
     shm = QSharedMemory("FocusGuard-pixelcatpet-single-instance")
-    if shm.attach():            # segment exists -> another instance is running
-        shm.detach()
-        return None
-    if not shm.create(1):       # we couldn't create it (race / already there)
-        return None
-    return shm                  # keep this object alive for the process lifetime
+    attempts = 24 if retry else 1            # ~6 s of 0.25 s retries when relaunched
+    for i in range(attempts):
+        if shm.create(1):                    # got it -> we're the sole instance
+            return shm
+        if shm.attach():                     # the segment exists -> someone else holds it
+            shm.detach()
+        if i < attempts - 1:
+            _t.sleep(0.25)
+    return None
 
 
 def main() -> int:
+    # Elevated hosts helper path: do the privileged hosts edit and exit before any GUI.
+    _hc = _run_firewall_helper()
+    if _hc is not None:
+        return _hc
+
     app = QApplication(sys.argv)
     app.setApplicationName("FocusCat++")
     app.setApplicationDisplayName("FocusCat++")
 
-    _singleton = _acquire_single_instance(app)
+    # When relaunched elevated, wait for the previous (non-admin) copy to release the lock.
+    _relaunched = "--relaunched-admin" in sys.argv
+    _singleton = _acquire_single_instance(app, retry=_relaunched)
     if _singleton is None:
         QMessageBox.information(None, "FocusCat++", "FocusCat++ is already running.")
         return 0

@@ -594,31 +594,16 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+        if getattr(self, "game", None) is None:
+            return
         if on:
-            if not firewall.is_admin():
-                self._say_block_status(
-                    "Site block needs admin — click 'Restart as administrator'.")
-            else:
-                focusing = (getattr(self, "game", None) is not None and
-                            getattr(self.game, "_running", False) and
-                            self.game.session is not None and self.game.session.is_focus())
-                if focusing:
-                    # Apply now and CONFIRM it actually landed (some security software
-                    # locks the hosts file, so block() can report ok yet not persist).
-                    ok, msg = self._safe_block()
-                    if ok and firewall.is_blocked():
-                        self._say_block_status("Distracting sites are blocked now.")
-                    else:
-                        self._say_block_status(f"Couldn't block sites: {msg}")
-                else:
-                    self._say_block_status("Sites will be blocked while you focus.")
+            # Apply now — uses admin directly, or a one-time UAC helper when not admin
+            # (no app restart). reapply_site_block returns a user-facing message.
+            ok, msg = self.game.reapply_site_block()
+            self._say_block_status(msg)
         else:
-            # Turning the feature off should never leave the user's sites blocked.
-            try:
-                if firewall.is_blocked() and firewall.is_admin():
-                    firewall.unblock()
-            except Exception:
-                pass
+            self.game.remove_site_block()
+            self._say_block_status("Site blocking turned off.")
 
     def _on_domains_changed(self, text: str) -> None:
         """Domains field edited: save the list, and re-apply the block if focusing now."""
@@ -627,13 +612,12 @@ class MainWindow(QMainWindow):
             firewall.save_domains(domains)
         except Exception:
             pass
-        # Re-apply only when a block is meaningful right now (focus + enabled + admin).
+        # Refresh a LIVE block to pick up the new list — but only SILENTLY (admin). Without
+        # admin a re-apply needs a UAC prompt, so we skip it; the new list applies on the
+        # next focus session.
         try:
-            if self._firewall_cfg().get("enabled", False) and firewall.is_admin() \
-                    and getattr(self, "game", None) is not None \
-                    and getattr(self.game, "_running", False) \
-                    and self.game.session is not None and self.game.session.is_focus():
-                self._safe_block()
+            if firewall.is_admin() and getattr(self.game, "_sites_blocked", False):
+                firewall.block()
         except Exception:
             pass
 
@@ -672,18 +656,23 @@ class MainWindow(QMainWindow):
             pass
 
     def _cleanup_stale_block(self) -> None:
-        """On startup, drop a leftover block if the feature is now disabled (idempotent)."""
+        """On startup, drop a leftover block if the feature is now disabled (e.g. after a
+        crash). enforce() handles it with or without admin (a detached UAC helper if not)."""
         try:
-            if not self._firewall_cfg().get("enabled", False) \
-                    and firewall.is_blocked() and firewall.is_admin():
-                firewall.unblock()
+            if not self._firewall_cfg().get("enabled", False) and firewall.is_blocked():
+                firewall.enforce(False, wait=False)
         except Exception:
             pass
 
     def _unblock_on_exit(self) -> None:
         """Final safety: never leave the user's sites blocked after the app closes.
 
+        Prefers the game's own cleanup (tracks state + a single-shot guard so the elevated
+        unblock helper prompts at most once); falls back to a direct admin unblock.
         Idempotent — safe to call from both closeEvent and app.aboutToQuit."""
+        if getattr(self, "game", None) is not None:
+            self.game._unblock_sites(wait=False)
+            return
         try:
             if firewall.is_blocked() and firewall.is_admin():
                 firewall.unblock()

@@ -240,6 +240,30 @@ def unblock(do_flush=True):
     return True, "Block removed."
 
 
+def enforce(want_blocked, do_flush=True, wait=True):
+    """Apply (want_blocked=True) or remove the block, ELEVATING via a short-lived helper
+    process when we're not admin — so the app can block/unblock without restarting.
+
+    Returns (ok, msg). With admin it edits hosts directly; without admin it runs the same
+    exe with --fw-block / --fw-unblock under a UAC prompt (one prompt per call).
+    wait=False fires the helper without waiting (used on app exit so shutdown can't hang)."""
+    if want_blocked and not load_domains():
+        return False, "Domain list is empty - add a site to block."
+    if is_admin():
+        return block(do_flush=do_flush) if want_blocked else unblock(do_flush=do_flush)
+    try:
+        import elevation
+        ok = elevation.run_hosts_helper("block" if want_blocked else "unblock", wait=wait)
+    except Exception as e:
+        return False, f"Admin helper error: {e}"
+    if not wait:
+        return True, "Admin helper launched."
+    if ok:
+        return True, ("Sites blocked (admin granted)." if want_blocked
+                      else "Block removed (admin granted).")
+    return False, "Admin prompt was cancelled."
+
+
 # --------------------------------------------------------------------------- #
 #  CLI
 # --------------------------------------------------------------------------- #

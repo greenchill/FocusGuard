@@ -113,6 +113,12 @@ class GameController(QObject):
         # Focus-second accumulator: every full 60 s -> minutes -> XP.
         self._focus_second_acc = 0
         self._tick_count = 0
+        # Whether the hosts site-block is currently applied (so we don't re-apply it every
+        # focus phase — important without admin, where each toggle costs a UAC prompt).
+        self._sites_blocked = False
+        # One-shot guard so the exit-time unblock helper fires at most once (shutdown can
+        # be called from both closeEvent and aboutToQuit -> would otherwise double-prompt).
+        self._exit_unblock_done = False
 
         # Authoritative clock: 1 Hz. Don't start until there's a session.
         self._clock = QTimer(self)
@@ -229,29 +235,67 @@ class GameController(QObject):
         """The firewall section of cfg (created if missing)."""
         return self.cfg.setdefault("firewall", {})
 
-    def _block_sites(self):
-        """Block during focus, if enabled. Surface (not raise) any failure."""
-        fw = self._fw()
-        if not fw.get("enabled", False):
-            return
-        if not fw.get("block_during_focus", True):
-            return
+    def _is_admin_fw(self):
         try:
-            ok, msg = firewall.block(do_flush=fw.get("flush_dns", True))
+            return firewall.is_admin()
+        except Exception:
+            return False
+
+    def _block_sites(self):
+        """Block during focus, if enabled. Uses firewall.enforce (elevates via a UAC helper
+        when not admin), and only applies once per session so it never re-prompts on each
+        focus phase. Surfaces (not raises) any failure."""
+        fw = self._fw()
+        if not fw.get("enabled", False) or not fw.get("block_during_focus", True):
+            return
+        if self._sites_blocked:
+            return                          # already blocked this session
+        try:
+            ok, msg = firewall.enforce(True, do_flush=fw.get("flush_dns", True))
+            self._sites_blocked = bool(ok)
             if not ok:
-                # No admin / empty list / write error — tell the user, don't crash.
                 self._status(f"Site block: {msg}")
         except Exception as exc:
             self._status(f"Site block error: {exc}")
 
-    def _unblock_sites(self):
-        """Remove the block (idempotent). Safe to call on break/stop/done/shutdown."""
+    def _unblock_sites(self, wait=True):
+        """Remove the block (idempotent). Uses enforce so it works with or without admin.
+        wait=False on app exit so a UAC prompt can't hang shutdown."""
         fw = self._fw()
         try:
-            if firewall.is_blocked() and firewall.is_admin():
-                firewall.unblock(do_flush=fw.get("flush_dns", True))
+            if self._sites_blocked or firewall.is_blocked():
+                if not wait:
+                    if self._exit_unblock_done:
+                        return
+                    self._exit_unblock_done = True
+                ok, msg = firewall.enforce(False, do_flush=fw.get("flush_dns", True), wait=wait)
+                if ok or not wait:
+                    self._sites_blocked = False
+                elif wait:
+                    self._status(f"Site unblock: {msg}")
         except Exception as exc:
             self._status(f"Site unblock error: {exc}")
+
+    def reapply_site_block(self):
+        """Apply the block right now if appropriate (used when the user enables it / changes
+        domains mid-session). Returns (ok, user_message)."""
+        fw = self._fw()
+        if not fw.get("enabled", False):
+            return False, "Site blocking is off."
+        if not (self._running and self.session is not None and self.session.is_focus()):
+            return True, "Sites will be blocked while you focus."
+        if self._sites_blocked:
+            return True, "Distracting sites are already blocked."
+        try:
+            ok, msg = firewall.enforce(True, do_flush=fw.get("flush_dns", True))
+            self._sites_blocked = bool(ok)
+            return ok, ("Distracting sites are blocked now." if ok else f"Couldn't block: {msg}")
+        except Exception as exc:
+            return False, f"Couldn't block: {exc}"
+
+    def remove_site_block(self):
+        """Remove the block now (used when the user disables the feature)."""
+        self._unblock_sites()
 
     def _status(self, message):
         """Surface a short message via whichever cat is visible (best effort)."""
@@ -408,8 +452,10 @@ class GameController(QObject):
             self.chime.play("break")
             self._say("break_start")
             self._set_detection_from_session()
-            # Break begins -> unblock sites so the user can relax (if configured).
-            if self._fw().get("unblock_during_break", True):
+            # Break begins -> unblock sites so the user can relax (if configured). Only do
+            # it SILENTLY (admin); without admin each unblock needs a UAC prompt, so we keep
+            # the block through the break (removed on stop) to avoid prompt-spam.
+            if self._fw().get("unblock_during_break", True) and self._is_admin_fw():
                 self._unblock_sites()
         elif event == "focus_start":
             self.chime.play("focus")
@@ -692,6 +738,7 @@ class GameController(QObject):
         self._running = False
         self.noise.stop()
         # Final safety: never leave the user's sites blocked after exit (idempotent
-        # with MainWindow._unblock_on_exit and app.aboutToQuit).
-        self._unblock_sites()
+        # with MainWindow._unblock_on_exit and app.aboutToQuit). wait=False so a non-admin
+        # UAC prompt can't hang shutdown — the elevated unblock helper runs detached.
+        self._unblock_sites(wait=False)
         self.save()
